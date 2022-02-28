@@ -4,11 +4,13 @@ std::ostream& operator<<(std::ostream &os, const Json &json){
     bool first = true;
     os << "{";
     print_collection_Json<double>(os, json.numbers, first);
-    print_collection_Json_quotes<std::string>(os, json.lines, first);
+    print_collection_Json_lines(os, json.lines, first);
     print_collection_Json_bool(os, json.bools, first);
     print_collection_Json<Json>(os, json.jsons, first);
     print_collection_Json<J_array>(os, json.arrays, first);
-    os << std::endl  << "}";
+    if (!first) os << std::endl  << "}";
+    else os << "}";
+
     return os;
 }
 
@@ -17,8 +19,11 @@ std::ostream& operator<<(std::ostream &os, const J_array &array_){
     for (unsigned int key = 0; key < array_.size_a; key++){
     if (key != 0) os << ",";
     if (array_.numbers.find(key) != array_.numbers.end()) {os << array_.numbers.at(key); continue;}
-    if (array_.lines.find(key) != array_.lines.end()) {os << "\"" << array_.lines.at(key) << "\""; continue;}
-    if (array_.bools.find(key) != array_.bools.end()) {os << (array_.bools.at(key) ? "\"true\"" : "\"false\""); continue;}
+    if (array_.lines.find(key) != array_.lines.end()) {
+            if (array_.lines.at(key) == "") {os << "null" ; continue;}
+            os << "\"" << array_.lines.at(key) << "\""; continue;
+    }
+    if (array_.bools.find(key) != array_.bools.end()) {os << (array_.bools.at(key) ? "true" : "false"); continue;}
     if (array_.jsons.find(key) != array_.jsons.end()) {os << std::endl << array_.jsons.at(key); continue;}
     if (array_.arrays.find(key) != array_.arrays.end()) {os << std::endl << array_.arrays.at(key); continue;}
     }
@@ -26,6 +31,18 @@ std::ostream& operator<<(std::ostream &os, const J_array &array_){
     return os;
 }
 
+void print_collection_Json_lines(std::ostream &os, const std::map<std::string, std::string>& collection, bool &first){
+    if (collection.empty()) return;
+    for (auto it = collection.begin(); it != collection.end(); it++){
+        os << (first ? "" : ",")
+        << std::endl
+        << "\"" << (it->first) << "\""
+        << ":";
+        if (it->second == "") os << "null";
+        else os << "\""<< (it->second) << "\"";
+        if (first) first = false;
+    }
+}
 void print_collection_Json_bool(std::ostream &os, const std::map<std::string, bool>& collection, bool& first){
     if (collection.empty()) return;
     for (auto it = collection.begin(); it != collection.end(); it++){
@@ -33,7 +50,7 @@ void print_collection_Json_bool(std::ostream &os, const std::map<std::string, bo
         << std::endl
         << "\"" << (it->first) << "\""
         << ":"
-        << (it->second ? "\"true\"" : "\"false\"");
+        << (it->second ? "true" : "false");
         if (first) first = false;
     }
 }
@@ -54,7 +71,7 @@ std::istream& operator>>(std::istream &is, J_array &array_){
 // J_SON PARCER methods
 
 bool Json_parcer::is_blank(char c){
-    return (c == ' ' || c == '\n');
+    return (c == ' ' || c == '\n' || c == '\t' || c == 'v');
 }
 char Json_parcer::read_blank(){
     char i;
@@ -66,6 +83,7 @@ std::string Json_parcer::find_name(){
 
     char i; std::vector<char> ans;
     i = read_blank(); rem = memory();
+    if (i == '}') throw END_REACHED;
     if (i != '"') throw parcer_exception("CANNOT FIND NEW FIELD", rem);
 
     return close_string(memory());
@@ -90,6 +108,7 @@ bool Json_parcer::find_value(Json& json, std::string key){
     if (i == '"') read_string(json, key);
     else if (i == '{') read_json(json, key);
     else if (i == '[') read_array(json, key);
+    else if (i == 't' || i == 'f' || i == 'n') read_bool(json, key, i);
     else result = read_number(json, key, i);
 
     if (result != NOWHERE) {
@@ -107,9 +126,7 @@ void Json_parcer::read_string(Json& json, std::string key){
     std::string rem = memory();
     std::string ans = close_string(memory()); bool result = false;
 
-    if (ans == "true") result = json.add_bool(key, true);
-    else if (ans == "false") result = json.add_bool(key, false);
-            else result = json.add_line(key, ans);
+    result = json.add_line(key, ans);
 
     if (!result) throw parcer_exception("DUPLICATE KEY", rem);
 }
@@ -148,6 +165,21 @@ int Json_parcer::read_number(Json& json, std::string key, char i){
     if (i == ',') return COMMA_REACHED;
     return NOWHERE;
 }
+void Json_parcer::read_bool(Json& json, std::string key, char i){
+    std::vector<char> ans; ans.push_back(i);
+    int times = 4;
+    if (i == 'f') times = 5;
+
+    for (int j = 1; j < times; j++){
+        i = get(); if (i == '\0') throw parcer_exception("UNKNOWN VALUE", memory());
+        ans.push_back(i);
+    }
+
+    std::string line(ans.begin(), ans.end());
+    if (line == "true") {json.add_bool(key, true); return;}
+    if (line == "false") {json.add_bool(key, false); return;}
+    if (line == "null") {json.add_line(key, ""); return;}
+}
 
 std::string Json_parcer::memory(){
     return std::string(memory_.begin(), memory_.end());
@@ -156,14 +188,16 @@ char Json_parcer::get(){
     int i = in.get();
     if (i == -1) return '\0';
     memory_.push_back((char)i);
-    if ((int)memory_.size() > 5) memory_.pop_front();
+    if ((int)memory_.size() > 10) memory_.pop_front();
     return (char)i;
 }
 Json_parcer::Json_parcer(std::istream& in):in(in){}
 void Json_parcer::parce(Json& json){
     bool end_reached = false;
     while(!end_reached){
+        try{
         end_reached = find_value(json, find_name());
+        }catch(Where_are_We e){return;}
     }
 }
 
@@ -178,7 +212,7 @@ char J_array_parcer::get(){
     int i = in.get();
     if (i == -1) return '\0';
     memory_.push_back((char)i);
-    if ((int)memory_.size() > 5) memory_.pop_front();
+    if ((int)memory_.size() > 10) memory_.pop_front();
     return (char)i;
 }
 char J_array_parcer::read_blank(){
@@ -204,6 +238,7 @@ bool J_array_parcer::find_value(J_array& array_){
     int result = NOWHERE; std::string rem = memory();
 
     char i = read_blank();
+    if (i == ']') return END_REACHED;
     if (i == '"') read_string(array_);
     else if (i == '{') read_json(array_);
     else if (i == '[') read_array(array_);
@@ -262,6 +297,7 @@ int J_array_parcer::read_number(J_array& array_, char i){
     if (i == ',') return COMMA_REACHED;
     return NOWHERE;
 }
+
 
 void J_array_parcer::parce(J_array& array_){
     bool end_reached = false;

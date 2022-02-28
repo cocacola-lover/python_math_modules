@@ -38,6 +38,7 @@ class Json_parcer{
     void read_string(Json& json, std::string key);
     void read_json(Json& json, std::string key);
     void read_array(Json& json, std::string key);
+    void read_bool(Json& json, std::string key, char i);
     int read_number(Json& json, std::string key, char i);
 
     std::string memory();
@@ -60,6 +61,7 @@ class J_array_parcer{
     void read_string(J_array& array_);
     void read_json(J_array& array_);
     void read_array(J_array& array_);
+    int read_bool(J_array& array_, char i);
     int read_number(J_array& array_, char i);
 
     std::string memory();
@@ -94,6 +96,7 @@ void print_collection_Json_quotes(std::ostream &os, const std::map<std::string, 
     }
 }
 
+void print_collection_Json_lines(std::ostream &os, const std::map<std::string, std::string>& collection, bool &first);
 void print_collection_Json_bool(std::ostream &os, const std::map<std::string, bool>& collection, bool &first);
 std::ostream& operator<<(std::ostream &os, const Json &json);
 std::ostream& operator<<(std::ostream &os, const J_array &array_);
