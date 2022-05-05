@@ -45,7 +45,7 @@ def mirroringMethod(A, b):
                     alpha = norms.norm2(y) / norms.norm2(z)
 
                     w = (y - z * alpha) / norms.norm2(y - z * alpha)
-                    U = MyMatrix.eyeMatrix(An._lines - i) - (w * w.transpon() * 2)
+                    U = MyMatrix.eyeMatrix(An._lines - i) - (w * w.transpon() * 2);
                     U = U.raiseDimension(An._lines)
 
                     An, bn = U*An, U*bn

@@ -5,40 +5,52 @@ class MyMatrix:
 
     @staticmethod
     def makeDiagonalNotZero(A, b):
-        if (isinstance(A, MyMatrix) and  isinstance(b, vector.MyVector)):
-            if (A.checkSquare()):
-                check = True
-                for i in range(A._lines):
-                    if (A[i][i] == 0): check = False
-                if check == True: return A, b
+        if (A.checkSquare()):
+            check = True
+            for i in range(A._lines):
+                if (A[i][i] == 0): check = False
+            if check == True: return A, b
 
-                An, bn = A.copy(), b.copy()
-                check = []
-                for i in range(A._lines):
-                    arr = []
-                    for j in range(A._lines):
-                        if A[i][j] != 0: arr += [j]
-                    check += [arr]
+            An, bn = A.copy(), b.copy()
+            check = []
+            for i in range(A._lines):
+                arr = []
+                for j in range(A._lines):
+                    if A[i][j] != 0: arr += [j]
+                check += [arr]
                 
-                check = sorted(check, key = lambda i:len(i))
+            check = sorted(check, key = lambda i:len(i))
 
-                for i in range(A._lines):
-                    if len(check[i]) == 0: raise ValueError
+            for i in range(A._lines):
+                if len(check[i]) == 0: raise ValueError
 
-                    An[i], bn[i] = A[check[i][0]], b[check[i][0]]
-                    for j in range(i+1, A._lines):
-                        if check[i][0] in check[j]: check[j].remove(check[i][0])
+                An[i], bn[i] = A[check[i][0]], b[check[i][0]]
+                for j in range(i+1, A._lines):
+                    if check[i][0] in check[j]: check[j].remove(check[i][0])
                 
-                return An, bn
+            return An, bn
 
+    def __call__(self, *args):
+        if (len(args) != self._columns): raise ValueError
 
+        return vector.MyVector([sum([self[i][j](args[j]) for j in range(self._columns)]) for i in range(self._lines)])
+
+    def Jacobian(self, *args, **eps):
+        if (len(args) != self._columns or not self.checkSquare()): raise ValueError
+        if "eps" not in eps: eps["eps"] = 10**-6
+
+        ans, eps = MyMatrix.zeroMatrix(self._lines), eps["eps"]
+        for i in range(self._lines):
+            for j in range(self._lines):
+                ans[i][j] = (self[i][j](args[j] + eps) - self[i][j](args[j])) / eps
+        return ans
 
     @staticmethod
     def zeroMatrix(lines, columns = 0):
-        if (isinstance(lines, int) and isinstance(columns, int)):
-            if columns == 0: return MyMatrix([[0 for i in range(lines)] for i in range(lines)])
-            return MyMatrix([[0 for i in range(columns)] for i in range(lines)])
-        raise ValueError
+        if columns == 0: 
+            return MyMatrix([[0 for i in range(lines)] for i in range(lines)])
+        return MyMatrix([[0 for i in range(columns)] for i in range(lines)])
+
 
     @staticmethod
     def eyeMatrix(size):
@@ -57,10 +69,6 @@ class MyMatrix:
 
         for i in range(lines):
             if len(arr[i]) != columns: raise ValueError
-
-        for i in range(lines):
-            for j in range(columns):
-                if (not isinstance(arr[i][j], int) and not isinstance(arr[i][j], float)): raise ValueError
 
         return (lines, columns)
 
@@ -119,11 +127,6 @@ class MyMatrix:
                         result += self[i][j] * other[j]
                     newVector[i] = result
                 return newVector
-        elif (isinstance(other, int) or isinstance(other, float)):
-            newMatrix = self.copy()
-            for i in range(self._lines):
-                for j in range(self._columns): newMatrix[i][j] *= other
-            return newMatrix
         elif (isinstance(other, MyMatrix)):
             if (self._columns != other._lines): raise ValueError
             newMatrix = MyMatrix.zeroMatrix(self._lines, other._columns)
@@ -133,26 +136,25 @@ class MyMatrix:
                     newMatrix[i][j] = vector.MyVector.termByTermMultiplicationSum(self.getLine(i), other.getColumn(j))
             
             return newMatrix
-
-        raise ValueError
+        else:
+            newMatrix = self.copy()
+            for i in range(self._lines):
+                for j in range(self._columns): newMatrix[i][j] *= other
+            return newMatrix
     
     def __add__(self, other):
-        if (isinstance(other, MyMatrix)):
-            if (self._lines == other._lines and self._columns == other._columns):
-                newMatrix = self.copy()
-                for i in range(self._lines):
-                    for j in range(self._columns): newMatrix[i][j] += other[i][j]
-                return newMatrix
-        raise ValueError
+        if (self._lines == other._lines and self._columns == other._columns):
+            newMatrix = self.copy()
+            for i in range(self._lines):
+                for j in range(self._columns): newMatrix[i][j] += other[i][j]
+            return newMatrix
 
     def __sub__(self, other):
-        if (isinstance(other, MyMatrix)):
-            if (self._lines == other._lines and self._columns == other._columns):
-                newMatrix = self.copy()
-                for i in range(self._lines):
-                    for j in range(self._columns): newMatrix[i][j] -= other[i][j]
-                return newMatrix
-        raise ValueError
+        if (self._lines == other._lines and self._columns == other._columns):
+            newMatrix = self.copy()
+            for i in range(self._lines):
+                for j in range(self._columns): newMatrix[i][j] -= other[i][j]
+            return newMatrix
 
     def checkSquare(self):
         return self._lines == self._columns

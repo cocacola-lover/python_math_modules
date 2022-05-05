@@ -2,8 +2,6 @@ import matrix
 
 class MyVector:
     def __init__(self, arr) -> None:
-        for i in range(len(arr)):
-            if (not isinstance(arr[i], int) and not isinstance(arr[i], float)): raise ValueError
 
         self._size = len(arr)
         self._arr = arr.copy()
@@ -30,17 +28,11 @@ class MyVector:
             raise ValueError
 
     def __setitem__(self, key, value):
-        if (isinstance(key, int) and (isinstance(value, float) or isinstance(value, int))):
             self._arr[key] = value
-        else:
-            raise ValueError
    
     def __mul__(self, other):
         newVector = MyVector(self._arr)
-        if (isinstance(other, int) or isinstance(other, float)):
-            for i in range(newVector._size): newVector[i] *= other
-            return newVector
-        elif(isinstance(other, matrix.MyMatrix)):
+        if(isinstance(other, matrix.MyMatrix)):
             if (1 != other._lines): raise ValueError
             
             newMatrix = matrix.MyMatrix.zeroMatrix(self._size, other._columns)
@@ -50,31 +42,25 @@ class MyVector:
             
             return newMatrix
         else:
-            raise ValueError
+            for i in range(newVector._size): newVector[i] *= other
+            return newVector
     
     def __add__(self, other):
         newVector = MyVector(self._arr)
-        if (isinstance(other, MyVector)):
-            if (self._size == other._size):
-                for i in range(self._size): newVector[i] += other[i]
-                return newVector
-        raise ValueError
+        if (self._size == other._size):
+            for i in range(self._size): newVector[i] += other[i]
+            return newVector
 
     def __sub__(self, other):
         newVector = MyVector(self._arr)
-        if (isinstance(other, MyVector)):
-            if (self._size == other._size):
-                for i in range(self._size): newVector[i] -= other[i]
-                return newVector
-        raise ValueError
+        if (self._size == other._size):
+            for i in range(self._size): newVector[i] -= other[i]
+            return newVector
 
     def __truediv__(self, other):
         newVector = MyVector(self._arr)
-        if (isinstance(other, int) or isinstance(other, float)):
-            for i in range(newVector._size): newVector[i] /= other
-            return newVector
-        else:
-            raise ValueError
+        for i in range(newVector._size): newVector[i] /= other
+        return newVector
         
     def __str__(self) -> str:
         return "MyVector({})".format(self._arr.__str__())
